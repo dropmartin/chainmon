@@ -1,0 +1,2480 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANI's Tactical Bag Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .game-container {
+            width: 100vw;
+            height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header-left, .header-right {
+            display: flex;
+            gap: 15px;
+        }
+
+        .stat-chip {
+            background: #333;
+            padding: 10px 20px;
+            border: 1px solid #fff;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            flex: 1;
+            height: calc(100vh - 120px);
+        }
+
+        /* Character Panel - Left */
+        .character-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .character-video {
+            width: 90%;
+            height: 80%;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #222;
+        }
+
+        /* Inventory Panel - Middle */
+        .inventory-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .inventory-grid {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            height: 360px;
+            background: url('static/enven.png') no-repeat center center;
+            background-size: cover;
+            border: 2px solid #666;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .inventory-grid::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            z-index: 0;
+        }
+
+        .grid-cell {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 1px solid rgba(68, 68, 68, 0.6);
+            transition: background-color 0.2s;
+            z-index: 1;
+        }
+
+        .grid-cell:hover {
+            background: #333;
+        }
+
+        .grid-cell.preview-valid {
+            background: rgba(0, 255, 255, 0.3);
+        }
+
+        .grid-cell.preview-invalid {
+            background: rgba(255, 0, 0, 0.3);
+        }
+
+        .inventory-item {
+            position: absolute;
+            background: rgba(85, 85, 85, 0.9);
+            border: 2px solid #777;
+            border-radius: 6px;
+            cursor: grab;
+            padding: 4px;
+            font-size: 12px;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        .inventory-item:hover {
+            border-color: #4af;
+        }
+
+        .inventory-item.on-cooldown {
+            opacity: 0.5;
+            position: relative;
+        }
+
+        .inventory-item.on-cooldown::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 0, 0, 0.3);
+            border-radius: 6px;
+            z-index: 3;
+        }
+
+        .cooldown-timer {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 1px 3px;
+            border-radius: 3px;
+            z-index: 4;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .inventory-item:active {
+            cursor: grabbing;
+        }
+
+        .item-image {
+            max-width: 90%;
+            max-height: 60%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 2px #fff);
+        }
+
+        .item-level {
+            color: #ffa500;
+            font-weight: bold;
+            text-shadow: 0 0 2px #000;
+            margin-top: 2px;
+        }
+
+        .item-dps {
+            color: #4af;
+            font-size: 8px;
+            text-shadow: 0 0 2px #000;
+        }
+
+        .stats-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #333;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+
+        .stat-value {
+            font-weight: bold;
+        }
+
+        .upgrade-btn {
+            background: #666;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .upgrade-btn:hover {
+            background: #777;
+        }
+
+        .upgrade-btn:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
+        /* Game Panel - Right */
+        .game-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .shop-container {
+            width: 100%;
+            padding: 20px;
+        }
+
+        .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .shop-items {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .shop-item {
+            background: #333;
+            border: 1px solid #666;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            position: relative;
+            cursor: grab;
+            transition: all 0.2s ease;
+            width: 180px;
+            min-height: 100px;
+        }
+
+        .shop-item:hover {
+            border-color: #888;
+        }
+
+        .shop-item-grid {
+            display: inline-block;
+            position: relative;
+            background: rgba(34, 34, 34, 0.8);
+            border: 1px solid #555;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+        }
+
+        .shop-item-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 2px #fff);
+        }
+
+        .shop-item-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-transform: capitalize;
+        }
+
+        .shop-item-info {
+            font-size: 12px;
+            color: #fff;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .shop-item-dps {
+            font-size: 12px;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .reroll-btn {
+            background: #555;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .reroll-btn:hover {
+            background: #666;
+        }
+
+        .reroll-btn:disabled {
+            background: #333;
+            cursor: not-allowed;
+        }
+
+        .action-btn {
+            background: #555;
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .action-btn.blue {
+            background: #666;
+        }
+
+        .action-btn:hover {
+            opacity: 0.8;
+        }
+
+        .combat-screen {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: url('static/battle.png') no-repeat center center;
+            background-size: cover;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .combat-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1;
+        }
+
+        .combat-character {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 80 !important;
+        }
+
+        .combat-character img {
+            width: 240px;
+            height: 300px;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
+        }
+
+        .combat-enemy {
+            position: absolute;
+            top: 60%;
+            left: 60%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .combat-enemy img {
+            width: 370px;
+            height: 370px;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
+        }
+        .enemy-health-container {
+            display: none;
+        }
+
+        .enemy-name {
+            color: #fff;
+            font-weight: bold;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            background: #444;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #666;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(to right, #ff4444, #aa2222);
+            transition: width 0.3s;
+            border-radius: 8px;
+        }
+
+        .shield-bar {
+            width: 200px;
+            height: 15px;
+            background: #444;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 5px;
+            border: 2px solid #666;
+        }
+
+        .shield-fill {
+            height: 100%;
+            background: linear-gradient(to right, #aa44ff, #6622aa);
+            transition: width 0.3s;
+            border-radius: 6px;
+        }
+
+        .combat-stats {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #666;
+            z-index: 3;
+        }
+
+        .combat-stats div {
+            font-size: 16px;
+            margin: 5px 0;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .enemy-sprite {
+            font-size: 80px;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .dragging {
+            opacity: 0.5;
+            z-index: 1000;
+        }
+
+        .merge-animation {
+            animation: mergeGlow 0.5s ease-in-out;
+        }
+
+        .screen-shake {
+            animation: shake 0.3s ease-in-out;
+        }
+        
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+            20%, 40%, 60%, 80% { transform: translateX(3px); }
+        }
+
+        .damage-flash {
+            animation: damageFlash 0.2s ease-in-out;
+        }
+
+        @keyframes damageFlash {
+            0% { background: rgba(255, 0, 0, 0); }
+            50% { background: rgba(255, 0, 0, 0.3); }
+            100% { background: rgba(255, 0, 0, 0); }
+        }
+
+        .hit-flash {
+            animation: hitFlash 0.15s ease-in-out;
+        }
+
+        @keyframes hitFlash {
+            0% { filter: brightness(1) saturate(1); }
+            50% { filter: brightness(1.5) saturate(1.8) hue-rotate(-10deg); }
+            100% { filter: brightness(1) saturate(1); }
+        }
+
+        .attack-flash {
+            animation: attackFlash 0.1s ease-in-out;
+        }
+
+        @keyframes attackFlash {
+            0% { filter: brightness(1) saturate(1); }
+            50% { filter: brightness(1.3) saturate(1.5) hue-rotate(20deg); }
+            100% { filter: brightness(1) saturate(1); }
+        }
+
+        .damage-number {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff4444;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+            z-index: 100;
+            animation: damageNumberFloat 1s ease-out forwards;
+        }
+
+        .damage-number.player-damage {
+            color: #ff4444;
+        }
+
+        .damage-number.enemy-damage {
+            color: #ffaa44;
+        }
+
+        .damage-number.shield-damage {
+            color: #aa44ff;
+        }
+
+        #hp-display {
+            display: none;
+        }
+
+        @keyframes damageNumberFloat {
+            0% {
+                transform: translateY(0) scale(1.2);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-30px) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-60px) scale(0.8);
+                opacity: 0;
+            }
+        }
+
+        .muzzle-flash {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #ffff88 0%, #ffaa44 50%, transparent 70%);
+            border-radius: 50%;
+            z-index: 50;
+            opacity: 0;
+            animation: muzzleFlash 0.1s ease-out;
+        }
+
+        @keyframes muzzleFlash {
+            0% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+        }
+
+        .impact-effect {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #ff6644 0%, #ffaa44 30%, transparent 70%);
+            border-radius: 50%;
+            z-index: 50;
+            opacity: 0;
+            animation: impactEffect 0.2s ease-out;
+        }
+
+        @keyframes impactEffect {
+            0% {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+            50% {
+                opacity: 0.9;
+                transform: scale(1.5);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+        }
+
+        @keyframes mergeGlow {
+            0% { box-shadow: 0 0 0 rgba(74, 255, 74, 0.8); }
+            50% { box-shadow: 0 0 20px rgba(74, 255, 74, 0.8); }
+            100% { box-shadow: 0 0 0 rgba(74, 255, 74, 0.8); }
+        }
+
+        .image-error {
+            background: #555;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        #mobile-block {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #fff;
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+        }
+            #mobile-block img {
+            max-width: 80vw;
+            height: auto;
+        }
+
+        @media (max-width: 900px), (hover: none) and (pointer: coarse) {
+            body { background: #fff !important; }
+            .game-container { display: none !important; }
+            #mobile-block { display: flex !important; }
+        }
+
+    </style>
+</head>
+<body>
+    <div id="mobile-block">
+        <img src="static/no.png" alt="Mobile not supported">
+    </div>
+    <div class="game-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="stat-chip">DEMO: ANI</div>
+                <div class="stat-chip" id="resource-display">Gold: 3</div>
+            </div>
+            <div class="header-right">
+                <div class="stat-chip hidden" id="hp-display">HP: 100</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Character Panel - Left -->
+            <div class="character-panel">
+                <video class="character-video" autoplay loop muted>
+                    <source src="static/ani-ready.mp4" type="video/mp4">
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+                        Video not supported
+                    </div>
+                </video>
+            </div>
+
+            <!-- Inventory Panel - Middle -->
+            <div class="inventory-panel">
+                <div class="inventory-grid" id="inventory-grid">
+                    <!-- Grid cells will be generated by JS -->
+                </div>
+
+                <div class="stats-panel">
+                    <div class="stat-row">
+                        <div>
+                            <span style="color: #fff;">ATK:</span>
+                            <span class="stat-value" id="attack-value">0</span>
+                        </div>
+                        <button class="upgrade-btn hidden" id="atk-upgrade" onclick="upgradeMetaStat('attack')">
+                        +5% (10G)
+                        </button>
+                    </div>
+                    <div class="stat-row">
+                        <div>
+                            <span style="color: #fff;">HEAL:</span>
+                            <span class="stat-value" id="heal-value">0.9/s</span>
+                        </div>
+                    </div>
+                    <div class="stat-row">
+                        <div>
+                            <span style="color: #fff;">SHIELD:</span>
+                            <span class="stat-value" id="shield-value">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-row">
+                        <div>
+                            <span style="color: #fff;">HP:</span>
+                            <span class="stat-value" id="hp-value">100/100</span>
+                        </div>
+                        <button class="upgrade-btn hidden" id="hp-upgrade" onclick="upgradeMetaStat('hp')">
+                        +10 (10G)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Synergies Display -->
+                <div id="synergy-panel" style="margin-top: 15px;">
+                    <div style="color: #fff; font-weight: bold; margin-bottom: 8px; font-size: 14px;">Active Synergies:</div>
+                    <div id="synergy-list" style="font-size: 12px; color: #ccc;">
+                        No active synergies
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Panel - Right (Shop/Combat/Lobby) -->
+            <div class="game-panel">
+                <!-- Lobby Screen -->
+                <div id="lobby-screen">
+                    <button class="action-btn blue" onclick="startShop()">
+                        Start Day <span id="day-number">1</span>
+                    </button>
+                </div>
+
+                <!-- Shop Screen -->
+                <div id="shop-screen" class="shop-container hidden">
+                    <div class="shop-header">
+                        <h2>Shop</h2>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="reroll-btn" id="level-up-btn" onclick="levelUp()">
+                                Level Up (2G)
+                            </button>
+                            <button class="reroll-btn" id="reroll-btn" onclick="rerollShop()">
+                                Reroll (1G)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-bottom: 15px; color: #ccc;">
+                        <div>Level: <span id="level-display">1</span> | EXP: <span id="exp-display">0</span>/<span id="exp-needed-display">2</span></div>
+                        <div style="font-size: 12px; margin-top: 5px;">Inventory Slots: <span id="inventory-slots">3</span>/7</div>
+                    </div>
+
+                    <div class="shop-items" id="shop-items">
+                        <!-- Shop items will be generated by JS -->
+                    </div>
+
+                    <button class="action-btn" onclick="startCombat()">
+                        Start Combat
+                    </button>
+                </div>
+
+                <!-- Combat Screen -->
+                <div id="combat-screen" class="combat-screen hidden">
+                    <div id="cutscene-overlay" class="hidden"
+                        style="position:absolute; top:0; left:0; width:100%; height:100%; 
+                                display:flex; align-items:center; justify-content:center; z-index:100;">
+                        <img id="cutscene-image" src="" alt="Cutscene"
+                            class="hidden"
+                            style="max-width:90%; max-height:90%; border:3px solid #fff; border-radius:8px;">
+                    </div>
+                    <!-- Character positioned at bottom-left -->
+                    <div class="combat-character">
+                        <img src="static/ani_back.png" alt="Character" onerror="this.style.display='none';">
+                    </div>
+
+                    <!-- Enemy positioned at top-right -->
+                    <div class="combat-enemy">
+                        <img id="monster" alt="Monster" style="display:none;" onerror="this.style.display='none'">
+                        
+                        <!-- Enemy health bar -->
+                        <div class="enemy-health-container">
+                            <div class="enemy-name">Enemy</div>
+                            <div class="health-bar">
+                                <div class="health-fill" id="enemy-health-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Player shield bar (when active) -->
+                    <div class="shield-bar hidden" id="player-shield-bar" style="position: absolute; bottom: 450px; left: 40px; z-index: 3; width: 250px;">
+                        <div class="shield-fill" id="player-shield-fill"></div>
+                    </div>
+
+                    <!-- Combat stats in center -->
+                    <div class="combat-stats">
+                        <div>Grok HP: <span id="enemy-hp-text">100</span> / <span id="enemy-max-hp-text">100</span></div>
+                        <div id="player-shield-text" class="hidden" style="color: #a4f;">Player Shield: 0</div>
+                    </div>
+
+                    <!-- Hidden elements for compatibility -->
+                    <div class="enemy-sprite">🤖</div>
+                    <h2 style="display: none;">Enemy</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let gameState = {
+            playerHp: 100,
+            playerMaxHp: 100,
+            shieldHp: 0,
+            maxShield: 0,
+            gold: 3,
+            gems: 20,
+            day: 1,
+            level: 1,
+            exp: 0,
+            gamePhase: 'LOBBY',
+            inventory: Array(8).fill(null).map(() => Array(6).fill(null)),
+            enemyHp: 100,
+            enemyMaxHp: 100,
+            metaUpgrades: { attack: 0, defense: 0, hp: 0 },
+            weaponCooldowns: {},
+            combatInterval: null,
+            weaponIntervals: {},
+            cutsceneShown: { "90": false, "70": false, "50": false, "30": false, "10": false },
+            activeSynergies: {}
+        };
+        const GOLD_TO_GEM_RATE = 1;
+
+        const LEVEL_EXP_REQUIREMENTS = {1: 0, 2: 8, 3: 20, 4: 36, 5: 56, 6: 80, 7: 108};
+
+        const TIER_PROBABILITIES = {
+            1: { 1: 1.0, 2: 0.0, 3: 0.0, 4: 0.0 },
+            2: { 1: 0.7, 2: 0.3, 3: 0.0, 4: 0.0 },
+            3: { 1: 0.6, 2: 0.3, 3: 0.1, 4: 0.0 },
+            4: { 1: 0.5, 2: 0.3, 3: 0.15, 4: 0.05 },
+            5: { 1: 0.4, 2: 0.3, 3: 0.2, 4: 0.1 },
+            6: { 1: 0.3, 2: 0.3, 3: 0.25, 4: 0.15 },
+            7: { 1: 0.2, 2: 0.3, 3: 0.3, 4: 0.2 }
+        };
+
+        const MONSTER_IMAGES = ["static/mon_01.png", "static/mon_02.png", "static/mon_03.png"];
+
+        function setRandomMonster() {
+            const el = document.getElementById("monster");
+            if (!el) return;
+
+            const randomImg = MONSTER_IMAGES[Math.floor(Math.random() * MONSTER_IMAGES.length)];
+            el.style.display = "block";
+            el.src = `${randomImg}?r=${Math.random().toString(36).slice(2)}`;
+        }
+
+        const WEAPON_STATS = {
+            pistol: { dps: 8, interval: 0.8, upgrade: 2, size: [2, 2], tag: 'gun', tier: 1 },
+            rifle: { dps: 15, interval: 1.2, upgrade: 3, size: [2, 2], tag: 'gun', tier: 2 },
+            sniper: { dps: 40, interval: 3.0, upgrade: 8, size: [2, 2], tag: 'gun', tier: 3 },
+            canon: { dps: 80, interval: 4.0, upgrade: 15, size: [2, 2], tag: 'gun', tier: 4 }
+        };
+
+        const ARMOR_STATS = {
+            grove: { shield: 25, upgrade: 10, size: [2, 2], tag: 'shield', tier: 1 },
+            vest: { shield: 50, upgrade: 20, size: [2, 2], tag: 'shield', tier: 2 },
+            helmet: { shield: 75, upgrade: 30, size: [2, 2], tag: 'shield', tier: 3 },
+            shield: { shield: 100, upgrade: 40, size: [2, 2], tag: 'shield', tier: 4 }
+        };
+
+        const HEAL_STATS = {
+            heal: { healRate: 0.4, upgrade: 0.2, size: [2, 2], tag: 'heal', tier: 1 },
+            energy: { healRate: 0.8, upgrade: 0.4, size: [2, 2], tag: 'heal', tier: 2 },
+            nano: { healRate: 1.2, upgrade: 0.6, size: [2, 2], tag: 'heal', tier: 3 },
+            healthbag: { healRate: 1.6, upgrade: 0.8, size: [2, 2], tag: 'heal', tier: 4 }
+        };
+
+        const ITEM_SIZES = {
+            pistol: [2, 2], rifle: [2, 2], sniper: [2, 2], canon: [2, 2],
+            grove: [2, 2], vest: [2, 2], helmet: [2, 2], shield: [2, 2],
+            heal: [2, 2], energy: [2, 2], nano: [2, 2], healthbag: [2, 2]
+        };
+
+        const SYNERGY_EFFECTS = {
+            gun: {
+                2: { type: 'attack', value: 0.5, description: 'Attack +50%' },
+                3: { type: 'attack', value: 1.0, description: 'Attack +100%' },
+                4: { type: 'attack', value: 1.5, description: 'Attack +150%' }
+            },
+            shield: {
+                2: { type: 'startShield', value: 0.2, description: 'Start the battle with a 20% shield.' },
+                3: { type: 'startShield', value: 0.3, description: 'Start the battle with a 30% shield.' },
+                4: { type: 'damageReduction', value: 0.2, description: '20% damage reduction' }
+            },
+            heal: {
+                2: { type: 'healBoost', value: 0.3, description: 'Healing item effectiveness +30%' },
+                4: { type: 'startHeal', value: 0.2, description: 'Restore 20% of max HP at the start of battle.' }
+            }
+        };
+
+        let draggedItem = null;
+        let previewCells = [];
+
+        function levelUp() {
+            if (gameState.gold >= 2) {
+                gameState.gold -= 2;
+                gameState.exp += 2;
+                
+                // Check for level up
+                const nextLevel = gameState.level + 1;
+                const expNeeded = LEVEL_EXP_REQUIREMENTS[nextLevel];
+                if (nextLevel <= 7 && expNeeded && gameState.exp >= expNeeded) {
+                    gameState.level = nextLevel;
+                    gameState.exp = 0;  // 경험치 초기화 추가
+                }
+                
+                updateUI();
+            }
+        }
+
+        function getInventorySlots() {
+            return Math.min(3 + gameState.level - 1, 7);
+        }
+
+        function getUsedInventorySlots() {
+            let used = 0;
+            for (let x = 0; x < 8; x++) {
+                for (let y = 0; y < 6; y++) {
+                    const item = gameState.inventory[x][y];
+                    if (item && typeof item === 'object') {
+                        used++;
+                    }
+                }
+            }
+            return used;
+        }
+
+        function calculateSynergies() {
+            const uniqueItems = new Set();
+            const tagCounts = {};
+            
+            // Count tags from all items
+            for (let x = 0; x < 8; x++) {
+                for (let y = 0; y < 6; y++) {
+                    const item = gameState.inventory[x][y];
+                    if (item && typeof item === 'object') {
+                        // 이미 같은 subType이 있으면 스킵
+                        if (uniqueItems.has(item.subType)) {
+                            continue;
+                        }
+                        
+                        uniqueItems.add(item.subType);
+                        
+                        let tag = null;
+                        if (WEAPON_STATS[item.subType]) {
+                            tag = WEAPON_STATS[item.subType].tag;
+                        } else if (ARMOR_STATS[item.subType]) {
+                            tag = ARMOR_STATS[item.subType].tag;
+                        } else if (HEAL_STATS[item.subType]) {
+                            tag = HEAL_STATS[item.subType].tag;
+                        }
+                        
+                        if (tag) {
+                            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                        }
+                    }
+                }
+            }
+            
+            // Calculate active synergies
+            const activeSynergies = {};
+            
+            Object.keys(tagCounts).forEach(tag => {
+                const count = tagCounts[tag];
+                const synergyLevels = SYNERGY_EFFECTS[tag];
+                if (synergyLevels) {
+                    Object.keys(synergyLevels).forEach(threshold => {
+                        if (count >= parseInt(threshold)) {
+                            if (!activeSynergies[tag]) activeSynergies[tag] = [];
+                            activeSynergies[tag].push(synergyLevels[threshold]);
+                        }
+                    });
+                }
+            });
+            
+            gameState.activeSynergies = activeSynergies;
+            return activeSynergies;
+        }
+
+        function displayActiveSynergies() {
+            const synergyList = document.getElementById('synergy-list');
+            if (!synergyList) return;
+            
+            calculateSynergies();
+            
+            if (Object.keys(gameState.activeSynergies).length === 0) {
+                synergyList.textContent = 'No active synergies';
+                return;
+            }
+            
+            const synergyTexts = [];
+            Object.keys(gameState.activeSynergies).forEach(tag => {
+                const synergies = gameState.activeSynergies[tag];
+                const tagName = tag.charAt(0).toUpperCase() + tag.slice(1);
+                synergies.forEach(synergy => {
+                    synergyTexts.push(`${tagName}: ${synergy.description}`);
+                });
+            });
+            
+            synergyList.innerHTML = synergyTexts.join('<br>');
+        }
+
+        function rerollShop() {
+            if (gameState.gold >= 1) {
+                gameState.gold -= 1;
+                generateShopItems();
+                updateUI();
+            }
+        }
+
+        function generateShopItems() {
+            const weapons = ['pistol', 'rifle', 'sniper', 'canon'];
+            const armors = ['grove', 'vest', 'helmet', 'shield'];
+            const heals = ['heal', 'energy', 'nano', 'healthbag'];
+            const items = [];
+            
+            const probabilities = TIER_PROBABILITIES[gameState.level];
+            
+            for (let i = 0; i < 3; i++) {
+                const rand = Math.random();
+                let tier = 1;
+                let cumulative = 0;
+                
+                for (let t = 1; t <= 4; t++) {
+                    cumulative += probabilities[t];
+                    if (rand <= cumulative) {
+                        tier = t;
+                        break;
+                    }
+                }
+                
+                const categoryRand = Math.random();
+                let itemType, subType;
+                
+                if (categoryRand < 0.4) {
+                    itemType = 'weapon';
+                    subType = weapons[tier - 1];
+                } else if (categoryRand < 0.7) {
+                    itemType = 'armor';
+                    subType = armors[tier - 1];
+                } else {
+                    itemType = 'heal';
+                    subType = heals[tier - 1];
+                }
+                
+                items.push(createItem(itemType, subType, 1)); // Always level 1
+            }
+            
+            displayShopItems(items);
+            gameState.shopItems = items;
+        }
+
+        function startShop() {
+            gameState.gamePhase = 'SHOP';
+            showScreen('shop-screen');
+            renderInventory();
+            updateUI();
+        }
+
+        function startCombat() {
+            gameState.gamePhase = 'COMBAT';
+            gameState.enemyHp = 100 + (gameState.day - 1) * 20;
+            gameState.enemyMaxHp = gameState.enemyHp;
+            gameState.shieldHp = 0;
+            
+            calculateSynergies();
+            
+            // Apply shield synergies
+            const maxShield = calculateMaxShield();
+            if (gameState.activeSynergies.shield) {
+                gameState.activeSynergies.shield.forEach(synergy => {
+                    if (synergy.type === 'startShield') {
+                        gameState.shieldHp = Math.max(gameState.shieldHp, maxShield * synergy.value);
+                    }
+                });
+            }
+            
+            // Apply heal synergies
+            if (gameState.activeSynergies.heal) {
+                gameState.activeSynergies.heal.forEach(synergy => {
+                    if (synergy.type === 'startHeal') {
+                        const healAmount = gameState.playerMaxHp * synergy.value;
+                        gameState.playerHp = Math.min(maxHp, gameState.playerHp + healRate * 0.01);
+                    }
+                });
+            }
+            
+            gameState.maxShield = maxShield;
+            
+            renderInventory();
+
+            setRandomMonster();     
+            showScreen('combat-screen');
+            updateUI();
+            updateCombatUI();
+            
+            startCombatLoop();
+        }
+
+        function upgradeMetaStat(stat) {
+            let cost, maxLevel;
+            
+            if (stat === 'hp') {
+                cost = 10;
+                maxLevel = 50;
+            } else if (stat === 'attack') {
+                cost = 10;
+                maxLevel = 50;
+            } else {
+                return;
+            }
+
+            if (gameState.gems >= cost && gameState.metaUpgrades[stat] < maxLevel) {
+                gameState.gems -= cost;
+                gameState.metaUpgrades[stat]++;
+
+                if (stat === 'hp') {
+                    gameState.playerMaxHp += 10;
+                    gameState.playerHp = gameState.playerMaxHp;
+                }
+
+                updateUI();
+                updateStats();
+                saveGameData();
+            }
+        }
+
+        function createItemImage(itemType, fallbackText = '?') {
+            const img = document.createElement('img');
+            img.className = 'item-image';
+            img.src = `static/${itemType}.png`;
+            
+            img.onerror = function() {
+                const fallback = document.createElement('div');
+                fallback.className = 'image-error';
+                fallback.textContent = fallbackText;
+                fallback.style.width = img.style.width || '100%';
+                fallback.style.height = img.style.height || '100%';
+                img.parentNode.replaceChild(fallback, img);
+            };
+            
+            return img;
+        }
+
+        function initGame() {
+            loadGameData();
+            createInventoryGrid();
+            updateUI();
+            generateShopItems();
+            displayActiveSynergies();
+            
+            const testItem1 = createItem('weapon', 'pistol', 1);
+            const testItem2 = createItem('armor', 'grove', 1);
+            placeItem(testItem1, 0, 0);
+            placeItem(testItem2, 0, 2);
+        }
+
+        function createInventoryGrid() {
+            const grid = document.getElementById('inventory-grid');
+            grid.innerHTML = '';
+            
+            for (let x = 0; x < 8; x++) {
+                for (let y = 0; y < 6; y++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.style.left = `${x * 60}px`;
+                    cell.style.top = `${y * 60}px`;
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    
+                    cell.addEventListener('dragover', function(e) {
+                        e.preventDefault();
+                        handleDragOver(e);
+                    });
+                    
+                    cell.addEventListener('drop', function(e) {
+                        e.preventDefault();
+                        handleDrop(e);
+                    });
+                    
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        function createItem(type, subType, level = 1) {
+            return {
+                id: Math.random().toString(36).substr(2, 9),
+                type: type,
+                subType: subType,
+                level: level,
+                size: ITEM_SIZES[subType] || [2, 2]
+            };
+        }
+
+        function displayShopItems(items) {
+            const container = document.getElementById('shop-items');
+            container.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'shop-item';
+                itemDiv.draggable = true;
+                itemDiv.dataset.itemId = item.id;
+                itemDiv.dataset.itemIndex = index;
+                
+                const gridContainer = document.createElement('div');
+                gridContainer.className = 'shop-item-grid';
+                const [width, height] = item.size;
+                gridContainer.style.width = `${Math.max(60, width * 20)}px`;
+                gridContainer.style.height = `${Math.max(40, height * 15)}px`;
+                
+                const itemImage = createItemImage(item.subType, item.subType.charAt(0).toUpperCase());
+                itemImage.className = 'shop-item-image';
+                gridContainer.appendChild(itemImage);
+                
+                let dpsText = '';
+                let cost = 1;
+                let itemTag = '';
+                if (item.type === 'weapon') {
+                    const stats = WEAPON_STATS[item.subType];
+                    const baseDps = stats.dps + (item.level * stats.upgrade);
+                    const synergies = calculateSynergies();
+                    let synergyMultiplier = 1;
+                    if (synergies.gun) {
+                        synergies.gun.forEach(synergy => {
+                            if (synergy.type === 'attack') {
+                                synergyMultiplier += synergy.value;
+                            }
+                        });
+                    }
+                    const dps = Math.round(baseDps * (1 + gameState.metaUpgrades.attack * 0.05) * synergyMultiplier);
+                    dpsText = `<div class="shop-item-dps">${dps} DPS</div>`;
+                    cost = stats.tier;
+                    itemTag = 'ATK';
+                } else if (item.type === 'armor') {
+                    const stats = ARMOR_STATS[item.subType];
+                    cost = stats.tier;
+                    itemTag = 'SHIELD';
+                } else if (item.type === 'heal') {
+                    const stats = HEAL_STATS[item.subType];
+                    cost = stats.tier;
+                    itemTag = 'HEAL';
+                }
+                
+                itemDiv.innerHTML = `
+                    <div class="shop-item-name">${item.subType} (${itemTag})</div>
+                    <div class="shop-item-info">+${item.level} (${cost}G)</div>
+                    ${dpsText}
+                `;
+                
+                itemDiv.insertBefore(gridContainer, itemDiv.firstChild.nextSibling.nextSibling);
+                
+                itemDiv.addEventListener('dragstart', (e) => {
+                    draggedItem = { ...item, source: 'shop', shopIndex: index };
+                    itemDiv.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'copy';
+                    e.dataTransfer.setData('text/plain', item.id);
+                });
+                
+                itemDiv.addEventListener('dragend', (e) => {
+                    itemDiv.classList.remove('dragging');
+                    itemDiv.style.border = '1px solid #666';
+                    itemDiv.style.backgroundColor = '#333';
+                });
+                
+                itemDiv.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (draggedItem && draggedItem.source === 'shop' && 
+                        draggedItem.id !== item.id &&
+                        canMergeItems(item, draggedItem)) {
+                        
+                        itemDiv.style.border = '3px solid #4a4';
+                        itemDiv.style.backgroundColor = 'rgba(74, 255, 74, 0.3)';
+                        e.dataTransfer.dropEffect = 'copy';
+                    }
+                    else if (draggedItem && draggedItem.source === 'inventory' &&
+                             canMergeItems(item, draggedItem)) {
+                        
+                        itemDiv.style.border = '3px solid #44a';
+                        itemDiv.style.backgroundColor = 'rgba(68, 170, 255, 0.3)';
+                        e.dataTransfer.dropEffect = 'move';
+                    } 
+                    else {
+                        itemDiv.style.border = '1px solid #666';
+                        itemDiv.style.backgroundColor = '#333';
+                        e.dataTransfer.dropEffect = 'none';
+                    }
+                });
+                
+                itemDiv.addEventListener('dragleave', (e) => {
+                    e.stopPropagation();
+                    itemDiv.style.border = '1px solid #666';
+                    itemDiv.style.backgroundColor = '#333';
+                });
+        
+                itemDiv.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (draggedItem && draggedItem.source === 'shop' && 
+                        draggedItem.id !== item.id &&
+                        canMergeItems(item, draggedItem)) {
+                        
+                        item.level++;
+                        
+                        const draggedIndex = gameState.shopItems.findIndex(shopItem => shopItem.id === draggedItem.id);
+                        if (draggedIndex !== -1) {
+                            gameState.shopItems.splice(draggedIndex, 1);
+                        }
+                        
+                        displayShopItems(gameState.shopItems);
+                        draggedItem = null;
+                        return;
+                    }
+                    
+                    if (draggedItem && draggedItem.source === 'inventory') {
+                        if (canMergeItems(item, draggedItem)) {
+                            item.level++;
+                            draggedItem = null;
+                            displayShopItems(gameState.shopItems);
+                            renderInventory();
+                            updateStats();
+                            displayActiveSynergies();
+                            return;
+                        }
+                    }
+                    
+                    itemDiv.style.border = '1px solid #666';
+                    itemDiv.style.backgroundColor = '#333';
+                });
+                
+                container.appendChild(itemDiv);
+            });
+            
+            setupShopContainer();
+        }
+
+        function setupShopContainer() {
+            const shopContainer = document.getElementById('shop-items');
+            const shopScreen = document.getElementById('shop-screen');
+            
+            [shopContainer, shopScreen].forEach(element => {
+                element.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (draggedItem && draggedItem.source === 'inventory') {
+                        e.dataTransfer.dropEffect = 'move';
+                        if (element === shopContainer) {
+                            shopContainer.style.backgroundColor = 'rgba(68, 170, 255, 0.1)';
+                            shopContainer.style.border = '2px dashed #44a';
+                        }
+                    } else {
+                        e.dataTransfer.dropEffect = 'none';
+                    }
+                });
+                
+                element.addEventListener('dragleave', (e) => {
+                    if (element === shopContainer) {
+                        shopContainer.style.backgroundColor = '';
+                        shopContainer.style.border = '';
+                    }
+                });
+                
+                element.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (draggedItem && draggedItem.source === 'inventory' && 
+                        !e.target.classList.contains('shop-item') &&
+                        !e.target.closest('.shop-item')) {
+                        
+                        const newShopItem = { 
+                            ...draggedItem,
+                            id: Math.random().toString(36).substr(2, 9)
+                        };
+                        gameState.shopItems.push(newShopItem);
+                        
+                        draggedItem = null;
+                        displayShopItems(gameState.shopItems);
+                        renderInventory();
+                        updateStats();
+                        displayActiveSynergies();
+                        
+                        if (element === shopContainer) {
+                            shopContainer.style.backgroundColor = '';
+                            shopContainer.style.border = '';
+                        }
+                        return;
+                    }
+                    
+                    if (element === shopContainer) {
+                        shopContainer.style.backgroundColor = '';
+                        shopContainer.style.border = '';
+                    }
+                });
+            });
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            if (!draggedItem) return;
+
+            const x = parseInt(e.target.dataset.x);
+            const y = parseInt(e.target.dataset.y);
+            
+            clearPreview();
+            
+            if (draggedItem.source === 'shop') {
+                const overlappingItem = findOverlappingItem(draggedItem, x, y);
+                if (overlappingItem && canMergeItems(overlappingItem, draggedItem)) {
+                    showMergePreview(overlappingItem);
+                    return;
+                }
+                
+                const canPlace = canPlaceItem(draggedItem, x, y);
+                showPreview(x, y, draggedItem.size, canPlace);
+            }
+            
+            if (draggedItem.source === 'inventory') {
+                const overlappingItem = findOverlappingItem(draggedItem, x, y);
+                if (overlappingItem && canMergeItems(overlappingItem, draggedItem)) {
+                    showMergePreview(overlappingItem);
+                    return;
+                }
+                
+                const canPlace = canPlaceItem(draggedItem, x, y);
+                showPreview(x, y, draggedItem.size, canPlace);
+            }
+        }
+
+        function findOverlappingItem(dragItem, dropX, dropY) {
+            const [dragWidth, dragHeight] = dragItem.size;
+            
+            for (let checkX = 0; checkX < 8; checkX++) {
+                for (let checkY = 0; checkY < 6; checkY++) {
+                    const item = gameState.inventory[checkX][checkY];
+                    if (item && typeof item === 'object') {
+                        let itemStartX = checkX;
+                        let itemStartY = checkY;
+                        
+                        for (let x = 0; x < 8; x++) {
+                            for (let y = 0; y < 6; y++) {
+                                if (gameState.inventory[x][y] === item) {
+                                    itemStartX = x;
+                                    itemStartY = y;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        const [itemWidth, itemHeight] = item.size;
+                        
+                        const dragLeft = dropX;
+                        const dragRight = dropX + dragWidth;
+                        const dragTop = dropY;
+                        const dragBottom = dropY + dragHeight;
+                        
+                        const itemLeft = itemStartX;
+                        const itemRight = itemStartX + itemWidth;
+                        const itemTop = itemStartY;
+                        const itemBottom = itemStartY + itemHeight;
+                        
+                        const hasOverlap = !(dragLeft >= itemRight || dragRight <= itemLeft || 
+                                           dragTop >= itemBottom || dragBottom <= itemTop);
+                        
+                        if (hasOverlap) {
+                            return item;
+                        }
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        function canMergeItems(item1, item2) {
+            return item1.type === item2.type && 
+                   item1.subType === item2.subType && 
+                   item1.level === item2.level &&
+                   item1.level < 3;
+        }
+
+        function showMergePreview(targetItem) {
+            for (let x = 0; x < 8; x++) {
+                for (let y = 0; y < 6; y++) {
+                    if (gameState.inventory[x][y] === targetItem) {
+                        const [width, height] = targetItem.size;
+                        for (let dx = 0; dx < width; dx++) {
+                            for (let dy = 0; dy < height; dy++) {
+                                const cell = document.querySelector(`[data-x="${x + dx}"][data-y="${y + dy}"]`);
+                                if (cell) {
+                                    cell.classList.add('preview-valid');
+                                    cell.style.background = 'rgba(74, 255, 74, 0.5)';
+                                    previewCells.push(cell);
+                                }
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            if (!draggedItem) return;
+
+            const x = parseInt(e.target.dataset.x);
+            const y = parseInt(e.target.dataset.y);
+            
+            if (draggedItem.source === 'shop') {
+                const usedSlots = getUsedInventorySlots();
+                const maxSlots = getInventorySlots();
+                
+                if (usedSlots >= maxSlots) {
+                    clearPreview();
+                    draggedItem = null;
+                    alert(`Inventory full! You can only have ${maxSlots} items.`);
+                    return;
+                }
+                
+                let cost = 1;
+                if (draggedItem.type === 'weapon' && WEAPON_STATS[draggedItem.subType]) {
+                    cost = WEAPON_STATS[draggedItem.subType].tier;
+                } else if (draggedItem.type === 'armor' && ARMOR_STATS[draggedItem.subType]) {
+                    cost = ARMOR_STATS[draggedItem.subType].tier;
+                } else if (draggedItem.type === 'heal' && HEAL_STATS[draggedItem.subType]) {
+                    cost = HEAL_STATS[draggedItem.subType].tier;
+                }
+                
+                if (gameState.gold < cost) {
+                    clearPreview();
+                    draggedItem = null;
+                    alert(`Not enough gold! This item costs ${cost} gold.`);
+                    return;
+                }
+                
+                const overlappingItem = findOverlappingItem(draggedItem, x, y);
+                if (overlappingItem && canMergeItems(overlappingItem, draggedItem)) {
+                    overlappingItem.level++;
+                    gameState.gold -= cost;
+                    removeShopItem(draggedItem.id);
+                    clearPreview();
+                    draggedItem = null;
+                    renderInventory();
+                    updateStats();
+                    displayActiveSynergies();
+                    updateUI();
+                    return;
+                }
+                
+                if (canPlaceItem(draggedItem, x, y)) {
+                    gameState.gold -= cost;
+                    placeItem(draggedItem, x, y);
+                    removeShopItem(draggedItem.id);
+                    clearPreview();
+                    draggedItem = null;
+                    updateUI();
+                    return;
+                }
+            }
+            
+            if (draggedItem.source === 'inventory') {
+                const overlappingItem = findOverlappingItem(draggedItem, x, y);
+                if (overlappingItem && canMergeItems(overlappingItem, draggedItem)) {
+                    overlappingItem.level++;
+                    clearPreview();
+                    draggedItem = null;
+                    renderInventory();
+                    updateStats();
+                    displayActiveSynergies();
+                    
+                    setTimeout(() => {
+                        const itemElements = document.querySelectorAll('.inventory-item');
+                        itemElements.forEach(element => {
+                            if (element.dataset && element.dataset.itemId === overlappingItem.id) {
+                                element.classList.add('merge-animation');
+                                setTimeout(() => {
+                                    element.classList.remove('merge-animation');
+                                }, 500);
+                            }
+                        });
+                    }, 100);
+                    return;
+                }
+                
+                if (canPlaceItem(draggedItem, x, y)) {
+                    placeItem(draggedItem, x, y);
+                    clearPreview();
+                    draggedItem = null;
+                    return;
+                }
+            }
+            
+            clearPreview();
+        }
+
+        function canPlaceItem(item, startX, startY) {
+            const [width, height] = item.size;
+            
+            if (startX + width > 8 || startY + height > 6) return false;
+            
+            for (let x = startX; x < startX + width; x++) {
+                for (let y = startY; y < startY + height; y++) {
+                    if (gameState.inventory[x][y] !== null) return false;
+                }
+            }
+            return true;
+        }
+
+        function placeItem(item, startX, startY) {
+            const [width, height] = item.size;
+            
+            for (let x = startX; x < startX + width; x++) {
+                for (let y = startY; y < startY + height; y++) {
+                    gameState.inventory[x][y] = (x === startX && y === startY) ? item : 'occupied';
+                }
+            }
+            
+            renderInventory();
+            updateStats();
+            displayActiveSynergies();
+        }
+
+        function showPreview(x, y, size, isValid) {
+            const [width, height] = size;
+            
+            for (let dx = 0; dx < width; dx++) {
+                for (let dy = 0; dy < height; dy++) {
+                    const cell = document.querySelector(`[data-x="${x + dx}"][data-y="${y + dy}"]`);
+                    if (cell) {
+                        cell.classList.add(isValid ? 'preview-valid' : 'preview-invalid');
+                        previewCells.push(cell);
+                    }
+                }
+            }
+        }
+
+        function clearPreview() {
+            previewCells.forEach(cell => {
+                cell.classList.remove('preview-valid', 'preview-invalid');
+                cell.style.background = '';
+            });
+            previewCells = [];
+        }
+
+        function removeShopItem(itemId) {
+            gameState.shopItems = gameState.shopItems.filter(i => i.id !== itemId);
+            displayShopItems(gameState.shopItems);
+        }
+
+        function renderInventory() {
+            const grid = document.getElementById('inventory-grid');
+            
+            const existingItems = grid.querySelectorAll('.inventory-item');
+            existingItems.forEach(item => item.remove());
+            
+            for (let x = 0; x < 8; x++) {
+                for (let y = 0; y < 6; y++) {
+                    const item = gameState.inventory[x][y];
+                    if (item && typeof item === 'object') {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'inventory-item';
+                        itemDiv.dataset.itemId = item.id;
+                        itemDiv.dataset.x = x;
+                        itemDiv.dataset.y = y;
+                        
+                        const itemWidth = Math.min(item.size[0] * 60 - 4, (8 - x) * 60 - 4);
+                        const itemHeight = Math.min(item.size[1] * 60 - 4, (6 - y) * 60 - 4);
+                        
+                        itemDiv.style.left = `${x * 60 + 2}px`;
+                        itemDiv.style.top = `${y * 60 + 2}px`;
+                        itemDiv.style.width = `${itemWidth}px`;
+                        itemDiv.style.height = `${itemHeight}px`;
+                        
+                        const itemImage = createItemImage(item.subType, item.subType.charAt(0).toUpperCase());
+                        itemImage.style.maxWidth = `${Math.min(80, itemWidth - 8)}%`;
+                        itemImage.style.maxHeight = `${Math.min(50, itemHeight - 20)}%`;
+                        itemImage.style.position = 'relative';
+                        itemImage.style.zIndex = '1';
+                        itemDiv.appendChild(itemImage);
+                        
+                        if (item.level > 1 && itemHeight >= 30) {
+                            const levelDiv = document.createElement('div');
+                            levelDiv.className = 'item-level';
+                            levelDiv.textContent = `+${item.level}`;
+                            levelDiv.style.position = 'relative';
+                            levelDiv.style.zIndex = '1';
+                            itemDiv.appendChild(levelDiv);
+                        }
+                        
+                        if (item.type === 'weapon' && itemHeight >= 50) {
+                            const stats = WEAPON_STATS[item.subType];
+                            const baseDps = stats.dps + (item.level * stats.upgrade);
+                            let synergyMultiplier = 1;
+                            if (gameState.activeSynergies.gun) {
+                                gameState.activeSynergies.gun.forEach(synergy => {
+                                    if (synergy.type === 'attack') {
+                                        synergyMultiplier += synergy.value;
+                                    }
+                                });
+                            }
+                            const dps = Math.round(baseDps * (1 + gameState.metaUpgrades.attack * 0.05) * synergyMultiplier);
+                            const dpsDiv = document.createElement('div');
+                            dpsDiv.className = 'item-dps';
+                            dpsDiv.textContent = `${dps} DPS`;
+                            dpsDiv.style.position = 'relative';
+                            dpsDiv.style.zIndex = '1';
+                            itemDiv.appendChild(dpsDiv);
+                        }
+                        
+                        if (gameState.gamePhase !== 'COMBAT') {
+                            itemDiv.draggable = true;
+                            itemDiv.style.pointerEvents = 'auto';
+                            itemDiv.style.zIndex = '10';
+                            
+                            itemDiv.addEventListener('dragstart', (e) => {
+                                removeItemFromInventory(item, x, y);
+                                draggedItem = { ...item, source: 'inventory', originalX: x, originalY: y };
+                                itemDiv.style.opacity = '0.5';
+                                e.dataTransfer.effectAllowed = 'move';
+                                e.dataTransfer.setData('text/plain', item.id);
+                            });
+                            
+                            itemDiv.addEventListener('dragend', (e) => {
+                                if (draggedItem && draggedItem.source === 'inventory' && draggedItem.id === item.id) {
+                                    placeItem(draggedItem, draggedItem.originalX, draggedItem.originalY);
+                                    draggedItem = null;
+                                }
+                                itemDiv.style.opacity = '1';
+                            });
+
+                            itemDiv.addEventListener('dragover', (e) => {
+                                e.preventDefault();
+                                e.stopImmediatePropagation();
+                                
+                                if (draggedItem && draggedItem.source === 'inventory' && 
+                                    draggedItem.id !== item.id &&
+                                    canMergeItems(item, draggedItem)) {
+                                    
+                                    itemDiv.style.border = '3px solid #4a4';
+                                    itemDiv.style.backgroundColor = 'rgba(74, 255, 74, 0.3)';
+                                    e.dataTransfer.dropEffect = 'move';
+                                } else if (draggedItem && draggedItem.source === 'shop' &&
+                                          canMergeItems(item, draggedItem)) {
+                                    
+                                    itemDiv.style.border = '3px solid #44a';
+                                    itemDiv.style.backgroundColor = 'rgba(68, 170, 255, 0.3)';
+                                    e.dataTransfer.dropEffect = 'copy';
+                                } else {
+                                    itemDiv.style.border = '2px solid #777';
+                                    itemDiv.style.backgroundColor = 'rgba(85, 85, 85, 0.9)';
+                                    e.dataTransfer.dropEffect = 'none';
+                                }
+                            });
+
+                            itemDiv.addEventListener('dragleave', (e) => {
+                                itemDiv.style.border = '2px solid #777';
+                                itemDiv.style.backgroundColor = 'rgba(85, 85, 85, 0.9)';
+                            });
+
+                            itemDiv.addEventListener('drop', (e) => {
+                                e.preventDefault();
+                                e.stopImmediatePropagation();
+                                
+                                if (draggedItem && draggedItem.source === 'inventory' && 
+                                    draggedItem.id !== item.id &&
+                                    canMergeItems(item, draggedItem)) {
+                                    
+                                    item.level++;
+                                    draggedItem = null;
+                                    renderInventory();
+                                    updateStats();
+                                    displayActiveSynergies();
+                                    return true;
+                                }
+                                
+                                if (draggedItem && draggedItem.source === 'shop' &&
+                                    canMergeItems(item, draggedItem)) {
+                                    
+                                    let cost = 1;
+                                    if (draggedItem.type === 'weapon' && WEAPON_STATS[draggedItem.subType]) {
+                                        cost = WEAPON_STATS[draggedItem.subType].tier;
+                                    } else if (draggedItem.type === 'armor' && ARMOR_STATS[draggedItem.subType]) {
+                                        cost = ARMOR_STATS[draggedItem.subType].tier;
+                                    } else if (draggedItem.type === 'heal' && HEAL_STATS[draggedItem.subType]) {
+                                        cost = HEAL_STATS[draggedItem.subType].tier;
+                                    }
+                                    
+                                    if (gameState.gold >= cost) {
+                                        item.level++;
+                                        gameState.gold -= cost;
+                                        removeShopItem(draggedItem.id);
+                                        draggedItem = null;
+                                        renderInventory();
+                                        updateStats();
+                                        displayActiveSynergies();
+                                        updateUI();
+                                        return true;
+                                    }
+                                }
+                                
+                                itemDiv.style.border = '2px solid #777';
+                                itemDiv.style.backgroundColor = 'rgba(85, 85, 85, 0.9)';
+                                return false;
+                            });
+                        } else {
+                            itemDiv.draggable = false;
+                            itemDiv.style.cursor = 'default';
+                            itemDiv.style.pointerEvents = 'none';
+                        }
+                        
+                        grid.appendChild(itemDiv);
+                    }
+                }
+            }
+        }
+
+        function removeItemFromInventory(item, startX, startY) {
+            const [width, height] = item.size;
+            
+            for (let x = startX; x < startX + width; x++) {
+                for (let y = startY; y < startY + height; y++) {
+                    gameState.inventory[x][y] = null;
+                }
+            }
+        }
+
+        function findItemsInInventory(type, subType = null) {
+            const items = [];
+            for (let x = 0; x < 8; x++) {
+                for (let y = 0; y < 6; y++) {
+                    const item = gameState.inventory[x][y];
+                    if (item && typeof item === 'object' && item.type === type && (!subType || item.subType === subType)) {
+                        items.push(item);
+                    }
+                }
+            }
+            return items;
+        }
+
+        function calculateTotalDPS() {
+            const weapons = findItemsInInventory('weapon');
+            let totalDPS = 0;
+            
+            weapons.forEach(weapon => {
+                const stats = WEAPON_STATS[weapon.subType];
+                if (stats) {
+                    const baseDps = stats.dps + (weapon.level * stats.upgrade);
+                    totalDPS += baseDps;
+                }
+            });
+            
+            let synergyMultiplier = 1;
+            if (gameState.activeSynergies.gun) {
+                gameState.activeSynergies.gun.forEach(synergy => {
+                    if (synergy.type === 'attack') {
+                        synergyMultiplier += synergy.value;
+                    }
+                });
+            }
+            
+            return totalDPS * (1 + gameState.metaUpgrades.attack * 0.05) * synergyMultiplier;
+        }
+
+        function calculateHealRate() {
+            const healItems = findItemsInInventory('heal');
+            let healRate = 0;
+            
+            healItems.forEach(item => {
+                const stats = HEAL_STATS[item.subType];
+                if (stats) {
+                    healRate += stats.healRate + (item.level * stats.upgrade);
+                }
+            });
+            
+            let healMultiplier = 1;
+            if (gameState.activeSynergies.heal) {
+                gameState.activeSynergies.heal.forEach(synergy => {
+                    if (synergy.type === 'healBoost') {
+                        healMultiplier += synergy.value;
+                    }
+                });
+            }
+            
+            return healRate * healMultiplier;
+        }
+
+        function calculateMaxShield() {
+            const armorItems = findItemsInInventory('armor');
+            let totalShield = 0;
+            
+            armorItems.forEach(armor => {
+                const stats = ARMOR_STATS[armor.subType];
+                if (stats) {
+                    totalShield += stats.shield + (armor.level * stats.upgrade);
+                }
+            });
+            
+            return totalShield * (1 + gameState.metaUpgrades.defense * 0.01);
+        }
+
+        function updateStats() {
+            const totalDPS = calculateTotalDPS();
+            const attackUpgradeLevel = gameState.metaUpgrades.attack;
+            const attackBonus = attackUpgradeLevel * 5; // 각 업그레이드당 5%
+            document.getElementById('attack-value').textContent = `${Math.round(totalDPS)} (+${attackBonus}%)`;
+            
+            const healRate = calculateHealRate();
+            const baseRegen = 0.9; 
+            const totalHealRate = baseRegen + healRate;
+            document.getElementById('heal-value').textContent = totalHealRate.toFixed(1) + '/s';
+            
+            const maxShield = calculateMaxShield();
+            document.getElementById('shield-value').textContent = Math.round(maxShield);
+            
+            document.getElementById('hp-value').textContent =
+                `${Math.round(gameState.playerHp)}/${gameState.playerMaxHp}`;
+        }
+
+        function updateUI() {
+            if (gameState.gamePhase === 'SHOP') {
+                document.getElementById('resource-display').textContent = `Gold: ${gameState.gold}`;
+            } else if (gameState.gamePhase === 'LOBBY') {
+                document.getElementById('resource-display').textContent = `Gem: ${gameState.gems}`;
+            } else if (gameState.gamePhase === 'COMBAT') {
+                document.getElementById('resource-display').textContent = `DAY ${gameState.day}`;
+            }
+
+            if (gameState.gamePhase === 'COMBAT') {
+                document.getElementById('hp-display').classList.remove('hidden');
+                document.getElementById('hp-display').textContent = `HP: ${Math.round(gameState.playerHp)}`;
+            } else {
+                document.getElementById('hp-display').classList.add('hidden');
+            }
+
+            document.getElementById('day-number').textContent = gameState.day;
+
+            const levelDisplay = document.getElementById('level-display');
+            const expDisplay = document.getElementById('exp-display');
+            const expNeededDisplay = document.getElementById('exp-needed-display');
+            const inventorySlots = document.getElementById('inventory-slots');
+
+            if (levelDisplay) levelDisplay.textContent = gameState.level;
+            if (expDisplay) expDisplay.textContent = gameState.exp;
+            if (expNeededDisplay) {
+                const nextLevel = gameState.level + 1;
+                const expNeeded = LEVEL_EXP_REQUIREMENTS[nextLevel] || gameState.exp;
+                expNeededDisplay.textContent = expNeeded;
+            }
+            if (inventorySlots) inventorySlots.textContent = getInventorySlots();
+
+            const rerollBtn = document.getElementById('reroll-btn');
+            const levelUpBtn = document.getElementById('level-up-btn');
+            
+            if (rerollBtn) {
+                rerollBtn.disabled = gameState.gold < 1;
+            }
+            
+            if (levelUpBtn) {
+                levelUpBtn.disabled = gameState.gold < 2 || gameState.level >= 7;
+                if (gameState.level >= 7) {
+                    levelUpBtn.textContent = 'MAX LEVEL';
+                } else {
+                    levelUpBtn.textContent = 'Level Up (2G)';
+                }
+            }
+
+            const atkBtn = document.getElementById('atk-upgrade');
+            if (atkBtn) {
+                if (gameState.gamePhase === 'LOBBY') {
+                    atkBtn.classList.remove('hidden');
+                    const nextCost = 10;
+                    atkBtn.innerHTML = `+5% (${nextCost}G)`;
+                } else {
+                    atkBtn.classList.add('hidden');
+                }
+                atkBtn.disabled = gameState.gems < 10 || gameState.metaUpgrades.attack >= 20;
+            }
+
+            const hpBtn = document.getElementById('hp-upgrade');
+            if (hpBtn) {
+                if (gameState.gamePhase === 'LOBBY') {
+                    hpBtn.classList.remove('hidden');
+                } else {
+                    hpBtn.classList.add('hidden');
+                }
+                hpBtn.disabled = gameState.gems < 10 || gameState.metaUpgrades.hp >= 10;
+            }
+        }
+
+        function showScreen(screenName) {
+            const screens = ['lobby-screen', 'shop-screen', 'combat-screen'];
+            screens.forEach(screen => {
+                document.getElementById(screen).classList.add('hidden');
+            });
+            document.getElementById(screenName).classList.remove('hidden');
+        }
+
+        function startCombatLoop() {
+            const weapons = findItemsInInventory('weapon');
+            
+            Object.values(gameState.weaponIntervals).forEach(interval => {
+                clearInterval(interval);
+            });
+            gameState.weaponIntervals = {};
+
+            weapons.forEach(weapon => {
+                fireWeapon(weapon);
+                
+                const stats = WEAPON_STATS[weapon.subType];
+                gameState.weaponIntervals[weapon.id] = setInterval(() => {
+                    fireWeapon(weapon);
+                }, stats.interval * 1000);
+            });
+            gameState.combatInterval = setInterval(() => {
+                combatTick();
+            }, 100);
+        }
+
+        function fireWeapon(weapon) {
+            if (gameState.weaponCooldowns[weapon.id]) {
+                return;
+            }
+
+            const stats = WEAPON_STATS[weapon.subType];
+            const baseDamage = stats.dps + (weapon.level * stats.upgrade);
+            let synergyMultiplier = 1;
+            if (gameState.activeSynergies.gun) {
+                gameState.activeSynergies.gun.forEach(synergy => {
+                    if (synergy.type === 'attack') {
+                        synergyMultiplier += synergy.value;
+                    }
+                });
+            }
+            const actualDamage = baseDamage * (1 + gameState.metaUpgrades.attack * 0.05) * synergyMultiplier;
+
+            gameState.enemyHp = Math.max(0, gameState.enemyHp - actualDamage);
+            
+            showAttackEffects(weapon, actualDamage);
+            
+            const cooldownDuration = stats.interval * 1000;
+            gameState.weaponCooldowns[weapon.id] = {
+                startTime: Date.now(),
+                duration: cooldownDuration,
+                endTime: Date.now() + cooldownDuration
+            };
+            
+            updateCombatUI();
+        }
+
+        function showAttackEffects(weapon, damage) {
+            const characterImg = document.querySelector('.combat-character img');
+            if (characterImg) {
+                characterImg.classList.add('attack-flash');
+                setTimeout(() => {
+                    characterImg.classList.remove('attack-flash');
+                }, 100);
+            }
+
+            createMuzzleFlash();
+
+            setTimeout(() => {
+                createImpactEffect();
+                showEnemyHitEffect();
+                showDamageNumber(damage, 'enemy');
+            }, 100);
+        }
+
+        function createMuzzleFlash() {
+            const muzzleFlash = document.createElement('div');
+            muzzleFlash.className = 'muzzle-flash';
+            muzzleFlash.style.left = '280px';
+            muzzleFlash.style.bottom = '180px';
+            
+            const combatScreen = document.getElementById('combat-screen');
+            combatScreen.appendChild(muzzleFlash);
+
+            setTimeout(() => {
+                if (muzzleFlash.parentNode) {
+                    muzzleFlash.parentNode.removeChild(muzzleFlash);
+                }
+            }, 100);
+        }
+
+        function createImpactEffect() {
+            const impactEffect = document.createElement('div');
+            impactEffect.className = 'impact-effect';
+            impactEffect.style.left = '55%';
+            impactEffect.style.top = '60%';
+            impactEffect.style.transform = 'translate(-50%, -50%)';
+            
+            const combatScreen = document.getElementById('combat-screen');
+            combatScreen.appendChild(impactEffect);
+
+            setTimeout(() => {
+                if (impactEffect.parentNode) {
+                    impactEffect.parentNode.removeChild(impactEffect);
+                }
+            }, 200);
+        }
+
+        function showEnemyHitEffect() {
+            const enemyImg = document.querySelector('.combat-enemy img');
+            if (enemyImg) {
+                enemyImg.classList.add('hit-flash');
+                setTimeout(() => {
+                    enemyImg.classList.remove('hit-flash');
+                }, 150);
+            }
+        }
+
+        function showPlayerHitEffect(damage, isShieldDamage = false) {
+            const gameContainer = document.querySelector('.game-container');
+            gameContainer.classList.add('screen-shake');
+            setTimeout(() => {
+                gameContainer.classList.remove('screen-shake');
+            }, 300);
+
+            const combatScreen = document.getElementById('combat-screen');
+            combatScreen.classList.add('damage-flash');
+            setTimeout(() => {
+                combatScreen.classList.remove('damage-flash');
+            }, 200);
+
+            const characterImg = document.querySelector('.combat-character img');
+            if (characterImg) {
+                characterImg.classList.add('hit-flash');
+                setTimeout(() => {
+                    characterImg.classList.remove('hit-flash');
+                }, 150);
+            }
+
+            showDamageNumber(damage, isShieldDamage ? 'shield' : 'player');
+        }
+
+        function showDamageNumber(damage, type) {
+            const damageNumber = document.createElement('div');
+            damageNumber.className = `damage-number ${type}-damage`;
+            damageNumber.textContent = Math.round(damage);
+
+            let positionX, positionY;
+            if (type === 'enemy') {
+                positionX = '60%';
+                positionY = '50%';
+            } else {
+                positionX = '20%';
+                positionY = '70%';
+            }
+
+            damageNumber.style.left = positionX;
+            damageNumber.style.top = positionY;
+            damageNumber.style.transform = 'translate(-50%, -50%)';
+
+            const combatScreen = document.getElementById('combat-screen');
+            combatScreen.appendChild(damageNumber);
+
+            setTimeout(() => {
+                if (damageNumber.parentNode) {
+                    damageNumber.parentNode.removeChild(damageNumber);
+                }
+            }, 1000);
+        }
+
+        function showShieldBreakEffect() {
+            const shieldBreakFlash = document.createElement('div');
+            shieldBreakFlash.style.position = 'absolute';
+            shieldBreakFlash.style.left = '0';
+            shieldBreakFlash.style.top = '0';
+            shieldBreakFlash.style.width = '100%';
+            shieldBreakFlash.style.height = '100%';
+            shieldBreakFlash.style.background = 'rgba(170, 68, 255, 0.4)';
+            shieldBreakFlash.style.zIndex = '90';
+            shieldBreakFlash.style.opacity = '0';
+            shieldBreakFlash.style.animation = 'shieldBreakFlash 0.3s ease-out';
+
+            const combatScreen = document.getElementById('combat-screen');
+            combatScreen.appendChild(shieldBreakFlash);
+
+            if (!document.querySelector('#shield-break-keyframes')) {
+                const style = document.createElement('style');
+                style.id = 'shield-break-keyframes';
+                style.textContent = `
+                    @keyframes shieldBreakFlash {
+                        0% { opacity: 0; }
+                        50% { opacity: 0.6; }
+                        100% { opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            setTimeout(() => {
+                if (shieldBreakFlash.parentNode) {
+                    shieldBreakFlash.parentNode.removeChild(shieldBreakFlash);
+                }
+            }, 300);
+        }
+
+        function combatTick() {
+            const currentTime = Date.now();
+            
+            Object.keys(gameState.weaponCooldowns).forEach(weaponId => {
+                const cooldown = gameState.weaponCooldowns[weaponId];
+                if (currentTime >= cooldown.endTime) {
+                    delete gameState.weaponCooldowns[weaponId];
+                }
+            });
+
+            const healRate = calculateHealRate();
+            const baseRegen = 0.9;
+            const totalHealRate = baseRegen + healRate;
+
+            if (totalHealRate > 0) {
+                const maxHp = gameState.playerMaxHp;
+                gameState.playerHp = Math.min(maxHp, gameState.playerHp + totalHealRate * 0.01);
+            }
+
+            if (Date.now() % 2000 < 100) {
+                const maxShield = calculateMaxShield();
+                if (maxShield > 0) {
+                    gameState.shieldHp = Math.min(maxShield, gameState.shieldHp + maxShield * 0.1);
+                }
+            }
+
+            if (Date.now() % 1500 < 100) {
+                let enemyDamage = 13 + (gameState.day - 1) * 4;
+                
+                if (gameState.activeSynergies.shield) {
+                    gameState.activeSynergies.shield.forEach(synergy => {
+                        if (synergy.type === 'damageReduction') {
+                            enemyDamage *= (1 - synergy.value);
+                        }
+                    });
+                }
+                
+                const actualDamage = enemyDamage * (1 - gameState.metaUpgrades.defense * 0.01);
+                
+                if (gameState.shieldHp > 0) {
+                    const shieldDamageTaken = Math.min(gameState.shieldHp, actualDamage);
+                    gameState.shieldHp = Math.max(0, gameState.shieldHp - actualDamage);
+                    
+                    showPlayerHitEffect(shieldDamageTaken, true);
+                    
+                    if (gameState.shieldHp <= 0) {
+                        setTimeout(() => {
+                            showShieldBreakEffect();
+                        }, 100);
+                    }
+                } else {
+                    gameState.playerHp = Math.max(0, gameState.playerHp - actualDamage);
+                    showPlayerHitEffect(actualDamage, false);
+                }
+            }
+
+            if (gameState.playerHp <= 0) {
+                const dayBonus = gameState.day - 1;
+                gameState.gems += dayBonus;
+                gameState.gold = 0;
+                saveGameData();
+
+                endCombat();
+                alert(`You are dead. You survived ${dayBonus} days and earned ${dayBonus} gems.`);
+                resetGame();
+                saveGameData();
+                return;
+            }
+
+            if (gameState.enemyHp <= 0) {
+                endCombat();
+                gameState.gamePhase = 'SHOP';
+                gameState.gold += 5;
+                gameState.day += 1;
+                
+                gameState.exp += 4;
+                
+                const nextLevel = gameState.level + 1;
+                const expNeeded = LEVEL_EXP_REQUIREMENTS[nextLevel];
+                if (nextLevel <= 7 && expNeeded && gameState.exp >= expNeeded) {
+                    gameState.level = nextLevel;
+                    gameState.exp = 0;
+                }
+                
+                generateShopItems();
+                showScreen('shop-screen');
+                renderInventory();
+                displayActiveSynergies();
+                updateUI();
+            }
+            updateCombatUI();
+        }
+
+        function endCombat() {
+            if (gameState.combatInterval) {
+                clearInterval(gameState.combatInterval);
+                gameState.combatInterval = null;
+            }
+
+            Object.values(gameState.weaponIntervals).forEach(interval => {
+                clearInterval(interval);
+            });
+            gameState.weaponIntervals = {};
+
+            gameState.weaponCooldowns = {};
+            gameState.shieldHp = 0;
+
+            draggedItem = null;
+            if (typeof clearPreview === 'function') clearPreview();
+        }
+
+        function updateCombatUI() {
+            const enemyHealthPercent = (gameState.enemyHp / gameState.enemyMaxHp) * 100;
+            const enemyHealthFill = document.getElementById('enemy-health-fill');
+            if (enemyHealthFill) {
+                enemyHealthFill.style.width = `${enemyHealthPercent}%`;
+            }
+            
+            const enemyHpText = document.getElementById('enemy-hp-text');
+            const enemyMaxHpText = document.getElementById('enemy-max-hp-text');
+            if (enemyHpText) enemyHpText.textContent = Math.round(gameState.enemyHp);
+            if (enemyMaxHpText) enemyMaxHpText.textContent = gameState.enemyMaxHp;
+    
+            const shieldBar = document.getElementById('player-shield-bar');
+            const shieldText = document.getElementById('player-shield-text');
+            const shieldFill = document.getElementById('player-shield-fill');
+            
+            if (gameState.shieldHp > 0) {
+                if (shieldBar) shieldBar.classList.remove('hidden');
+                if (shieldText) {
+                    shieldText.classList.remove('hidden');
+                    shieldText.textContent = `Shield: ${Math.round(gameState.shieldHp)}`;
+                }
+                
+                if (shieldFill) {
+                    const maxShield = calculateMaxShield();
+                    const shieldPercent = maxShield > 0 ? (gameState.shieldHp / maxShield) * 100 : 0;
+                    shieldFill.style.width = `${Math.min(100, shieldPercent)}%`;
+                }
+            } else {
+                if (shieldBar) shieldBar.classList.add('hidden');
+                if (shieldText) shieldText.classList.add('hidden');
+            }
+
+            updateStats();
+        }
+
+        // SAVE
+        function saveGameData() {
+            const saveData = {
+                gems: gameState.gems,
+                metaUpgrades: gameState.metaUpgrades,
+                playerMaxHp: gameState.playerMaxHp
+            };
+            localStorage.setItem('tacticalBagGame', JSON.stringify(saveData));
+        }
+
+        // LOAD
+        function loadGameData() {
+            const savedData = localStorage.getItem('tacticalBagGame');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    gameState.gems = data.gems || 20;
+                    gameState.metaUpgrades = data.metaUpgrades || { attack: 0, defense: 0, hp: 0 };
+                    gameState.playerMaxHp = data.playerMaxHp || (100 + gameState.metaUpgrades.hp * 10);
+                    gameState.playerHp = gameState.playerMaxHp;
+                } catch (e) {
+                    console.log('저장된 데이터를 불러올 수 없습니다.');
+                }
+            }
+        }
+
+        function resetGame() {
+            endCombat();
+
+            const preservedGems = gameState.gems;
+            const preservedMetaUpgrades = { ...gameState.metaUpgrades };
+            const initialMaxHp = 100 + preservedMetaUpgrades.hp * 10;
+
+            gameState = {
+                playerHp: initialMaxHp, 
+                playerMaxHp: initialMaxHp,      
+                shieldHp: 0,
+                maxShield: 0,
+                gold: 3,         
+                gems: preservedGems,  
+                day: 1,
+                level: 1,
+                exp: 0,
+                gamePhase: 'LOBBY',
+                inventory: Array(8).fill(null).map(() => Array(6).fill(null)),
+                enemyHp: 100,
+                enemyMaxHp: 100,
+                metaUpgrades: preservedMetaUpgrades, 
+                weaponCooldowns: {},
+                combatInterval: null,
+                weaponIntervals: {},
+                cutsceneShown: { "90": false, "70": false, "50": false, "30": false, "10": false },
+                activeSynergies: {}
+            };
+
+            showScreen('lobby-screen');
+
+            const testItem1 = createItem('weapon', 'pistol', 1);
+            const testItem2 = createItem('armor', 'grove', 1);
+            placeItem(testItem1, 0, 0);
+            placeItem(testItem2, 0, 2);
+
+            renderInventory();
+            displayActiveSynergies();
+            updateUI();
+            generateShopItems();
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' && e.ctrlKey) {
+                e.preventDefault();
+                resetGame();
+            }
+        });
+
+        // Initialize game when page loads
+        initGame();
+        updateStats();
+    </script>
+</body>
+</html>
