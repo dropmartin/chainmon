@@ -895,8 +895,8 @@
         const WEAPON_STATS = {
             pistol: { dps: 8, interval: 0.8, upgrade: 2, size: [2, 2], tag: 'gun', tier: 1 },
             rifle: { dps: 15, interval: 1.2, upgrade: 3, size: [2, 2], tag: 'gun', tier: 2 },
-            sniper: { dps: 29, interval: 3.0, upgrade: 7, size: [2, 2], tag: 'gun', tier: 3 },
-            canon: { dps: 59, interval: 4.0, upgrade: 10, size: [2, 2], tag: 'gun', tier: 4 }
+            sniper: { dps: 30, interval: 3.0, upgrade: 7, size: [2, 2], tag: 'gun', tier: 3 },
+            canon: { dps: 60, interval: 4.0, upgrade: 12, size: [2, 2], tag: 'gun', tier: 4 }
         };
 
         const ARMOR_STATS = {
@@ -907,10 +907,10 @@
         };
 
         const HEAL_STATS = {
-            heal: { healRate: 1, upgrade: 0.6, size: [2, 2], tag: 'heal', tier: 1 },
-            energy: { healRate: 1.5, upgrade: 1, size: [2, 2], tag: 'heal', tier: 2 },
-            nano: { healRate: 3, upgrade: 2, size: [2, 2], tag: 'heal', tier: 3 },
-            healthbag: { healRate: 6, upgrade: 3, size: [2, 2], tag: 'heal', tier: 4 }
+            heal: { healRate: 0.8, upgrade: 0.4, size: [2, 2], tag: 'heal', tier: 1 },
+            energy: { healRate: 1.0, upgrade: 0.8, size: [2, 2], tag: 'heal', tier: 2 },
+            nano: { healRate: 1.6, upgrade: 1.0, size: [2, 2], tag: 'heal', tier: 3 },
+            healthbag: { healRate: 1.6, upgrade: 0.8, size: [2, 2], tag: 'heal', tier: 4 }
         };
 
         const ITEM_SIZES = {
@@ -1128,7 +1128,7 @@
                 gameState.activeSynergies.heal.forEach(synergy => {
                     if (synergy.type === 'startHeal') {
                         const healAmount = gameState.playerMaxHp * synergy.value;
-                        gameState.playerHp = Math.min(maxHp, gameState.playerHp + healRate * 0.01);
+                        gameState.playerHp = Math.min(maxHp, gameState.playerHp + healRate * 0.05);
                     }
                 });
             }
@@ -2266,7 +2266,7 @@
 
             if (totalHealRate > 0) {
                 const maxHp = gameState.playerMaxHp;
-                gameState.playerHp = Math.min(maxHp, gameState.playerHp + totalHealRate * 0.01);
+                gameState.playerHp = Math.min(maxHp, gameState.playerHp + totalHealRate * 0.05);
             }
 
             if (Date.now() % 2000 < 100) {
@@ -2310,7 +2310,6 @@
                 const dayBonus = gameState.day - 1;
                 gameState.gems += dayBonus;
                 gameState.gold = 0;
-                saveGameData();
 
                 endCombat();
                 alert(`You are dead. You survived ${dayBonus} days and earned ${dayBonus} gems.`);
