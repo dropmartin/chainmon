@@ -262,6 +262,7 @@
         .shop-container {
             width: 100%;
             padding: 20px;
+            position: relative;
         }
 
         .shop-header {
@@ -414,6 +415,34 @@
             filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
         }
 
+        .combat-pet {
+            position: absolute;
+            bottom: 20px;
+            left: 280px;
+            z-index: 79 !important;
+        }
+
+        .combat-pet img {
+            width: 140px;
+            height: 180px;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
+        }
+
+        .shop-character {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 10;
+        }
+
+        .shop-character img {
+            width: 140px;
+            height: 160px;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
+        }
+
         .combat-enemy {
             position: absolute;
             top: 60%;
@@ -516,7 +545,30 @@
         .screen-shake {
             animation: shake 0.3s ease-in-out;
         }
-        
+        .monster-glow {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            height: 100px;
+            background: radial-gradient(ellipse, rgba(249, 248, 248, 0.4) 0%, rgba(101, 101, 101, 0.2) 50%, transparent 80%);
+            border-radius: 50%;
+            z-index: 1;
+            animation: monsterGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes monsterGlow {
+            0% {
+                opacity: 0.6;
+                transform: translateX(-50%) scale(1);
+            }
+            100% {
+                opacity: 0.9;
+                transform: translateX(-50%) scale(1.1);
+            }
+        }
+
 
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
@@ -797,6 +849,10 @@
                     <button class="action-btn" onclick="startCombat()">
                         Start Combat
                     </button>
+                    <!-- Shop Character positioned at bottom-right -->
+                    <div class="shop-character">
+                        <img src="static/ms.png" alt="Shop Character" onerror="this.style.display='none';">
+                    </div>
                 </div>
 
                 <!-- Combat Screen -->
@@ -812,10 +868,16 @@
                     <div class="combat-character">
                         <img src="static/ani_back.png" alt="Character" onerror="this.style.display='none';">
                     </div>
+                    <!-- Pet positioned next to character -->
+                    <div class="combat-pet">
+                        <img src="static/ms_back.png" alt="Pet" onerror="this.style.display='none';">
+                    </div>
 
                     <!-- Enemy positioned at top-right -->
                     <div class="combat-enemy">
                         <img id="monster" alt="Monster" style="display:none;" onerror="this.style.display='none'">
+
+                        <div class="monster-glow"></div>
                         
                         <!-- Enemy health bar -->
                         <div class="enemy-health-container">
@@ -881,15 +943,23 @@
             7: { 1: 0.2, 2: 0.3, 3: 0.3, 4: 0.2 }
         };
 
-        const MONSTER_IMAGES = ["static/mon_01.png", "static/mon_02.png", "static/mon_03.png"];
-
         function setRandomMonster() {
             const el = document.getElementById("monster");
             if (!el) return;
 
-            const randomImg = MONSTER_IMAGES[Math.floor(Math.random() * MONSTER_IMAGES.length)];
+            const monsterNum = ((gameState.day - 1) % 100) + 1;
+            const monsterImg = `mon/mon_s_${monsterNum}.png`;
+            
             el.style.display = "block";
-            el.src = `${randomImg}?r=${Math.random().toString(36).slice(2)}`;
+            el.src = `${monsterImg}?r=${Math.random().toString(36).slice(2)}`;
+            
+            if (monsterNum <= 32) {
+                el.style.width = "200px";
+                el.style.height = "200px";
+            } else {
+                el.style.width = "370px";
+                el.style.height = "370px";
+            }
         }
 
         const WEAPON_STATS = {
@@ -1128,7 +1198,7 @@
                 gameState.activeSynergies.heal.forEach(synergy => {
                     if (synergy.type === 'startHeal') {
                         const healAmount = gameState.playerMaxHp * synergy.value;
-                        gameState.playerHp = Math.min(maxHp, gameState.playerHp + healRate * 0.05);
+                        gameState.playerHp = Math.min(gameState.playerMaxHp, gameState.playerHp + healAmount);
                     }
                 });
             }
