@@ -14,11 +14,16 @@
 
         body {
             font-family: 'Arial', sans-serif;
-            background: #000;
+            /* 🔽 전체 배경 */
+            background: url('static/back.png') no-repeat center center fixed;
+            background-size: cover;
+
             color: #fff;
             overflow: hidden;
             height: 100vh;
         }
+
+        
 
         .game-container {
             width: 100vw;
@@ -409,8 +414,8 @@
         }
 
         .combat-character img {
-            width: 240px;
-            height: 300px;
+            width: 280px;
+            height: 450px;
             object-fit: contain;
             filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
         }
